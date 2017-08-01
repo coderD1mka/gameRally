@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Привет Pixi!</title>
+</head>
+<script src="../js/lib/pixi.min.js"></script>
+<style>
+    *{padding: 0;
+      margin: 0}
+</style>
+<body>
+<script>
+    //псевдонимы для более удобной работы с библиотекой PIXI
+    var Container=PIXI.Container,
+            autoDetectRenderer=PIXI.autoDetectRenderer,
+            loader=PIXI.loader,
+            resources=PIXI.loader.resources,
+            Sprite=PIXI.Sprite,
+            TextureCach=PIXI.utils.TextureCache,
+            Rectangle=PIXI.Rectangle;
+
+    var id,block1,block2,block3;
+
+    //создаем объект рендеринга
+    var renderer=autoDetectRenderer(512,512);
+    // Добавляем canvas к HTML документу
+    //  renderer.view - это объект <canvas> и им можно управлять также как и раньше
+    document.body.appendChild(renderer.view);
+
+    // Создаем контейнер объектов называемых 'stage'
+    var stage=new Container(); // для работы рендеринга нужен хотябы один такой объект
+
+    // Используем встроенный в Pixi объект `loader' для загрузки изображений
+    loader.add("images/blocks.json")
+            .on("progress",loadProgressHandler)  //обработчик контроля загрузки файлов
+            .load(setup);
+    //обработчик контроля загрузки файлов (картинок)
+    function loadProgressHandler(loader,resource){
+        //отображаем имя файла, который только что начал загружаться
+        console.log("loading: "+resource.url);
+
+        //отобразим процент загруженных файлов
+        console.log("progress: "+loader.progress+"%");
+    }
+
+
+    //Функция 'setup' запустится, когда изображение загрузится
+    function setup(){
+        console.log("Все файлы успешно загружены!");
+        //Есть 3 способа создать спрайты из текстурного атласа
+
+        //Способ 1. Прямой доступ к TextureCache
+        var block1Texture=TextureCach["block1pic"];
+         block1=new Sprite(block1Texture);
+        stage.addChild(block1);
+
+        //Способ 2. Доступ к текстуре используя loader.resources
+         block2=new Sprite(resources["images/blocks.json"].textures["block2pic"]);
+
+        stage.addChild(block2);
+
+        //Способ 3. Создаем псевдоним 'id' для всех текстур атласа
+        id=PIXI.loader.resources["images/blocks.json"].textures;
+         block3=new Sprite(id["block3pic"]);
+        stage.addChild(block3);
+
+/*
+        // Создаем 'tileset' спрайт, из текстуры
+        var texture=TextureCach["images/tileset.png"];
+
+        //создаем прямоугольный объект определяемый позицией и размерами из текстуры
+        var rectangle=new Rectangle(96,64,32,32);
+        //указываем текстуре использовать этот прямоугольник
+        texture.frame=rectangle;
+        // создаем спрайт из текстуры
+        var rocket=new Sprite(texture);
+        rocket.x=32;
+        rocket.y=32;*/
+        // создаем спрайт 'cat' из текстуры
+        /*  var cat=new Sprite(resources["images/cat.png"].texture);
+
+        cat.position.set(96,96);
+        cat.width=80;
+        cat.height=120;
+        cat.scale.x=2;
+        cat.scale.y=2;
+        cat.anchor.x=0.5; //устанавливаем якорь на центр спрайта
+        cat.anchor.y=0.5;//  аналогично работает cat.pivot.x/y , но значения задаются в пикселях
+        cat.rotation=0.5; //угол поворота в радианах. поворот идет вокруг якоря (anchor point)
+        */
+        //добавляем кота (cat) на уровень (stage)
+        //stage.addChild(rocket);
+
+       // cat.visible=false; //делаем кота невидимым
+        //отображаем уровень
+        renderer.render(stage);
+    }
+
+// Функция вызываемая 60 раз в секунду
+    function gameLoop(){
+        // Зацикливаем функцию на 60 фпс
+        requestAnimationFrame(gameLoop);
+        //двигаем блоки на 1 пиксель за кадр
+        if(++block1.x>=512) block1.x=0;
+        if(++block2.y>=512) block2.y=0;
+        if(++block3.x>=512 || ++block3.y>=512){
+            block3.x=0;
+            block3.y=0;
+        }
+
+        //отображаем уровень
+        renderer.render(stage);
+    }
+
+    // Запускаем игровой цикл
+    gameLoop();
+</script>
+
+</body>
+</html>
