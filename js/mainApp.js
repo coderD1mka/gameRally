@@ -133,7 +133,7 @@ gameManager={
 			for(var p in mapManager.objects){
 				this.addObj(new Car({name:p,x:baseX*128-70, y:baseY*128-70},spriteManager.carTextures[count]));
 				car=this.objects[p];
-				car.speed=10-count-0.5;
+				car.speed=5-count-0.5;
                 center=mapManager.centerOfCheckPoint(mapManager.checkPoints[0]);
                 car.angle=car.theta(center)+Math.PI/2;        //car.rot(Math.PI/2);
 				++count;
