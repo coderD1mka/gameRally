@@ -1,8 +1,10 @@
 /**
  * Created by SteelMan on 19.06.2017.
  */
-        const isCollision=true; // вычислять столкновения в движении или нет
-        const SHOW_CHECKPOINTS=false; // показывать чекпоинты или нет
+        const IS_COLLISION=false; // вычислять столкновения в движении или нет
+        const SHOW_CHECKPOINTS=true; // показывать чекпоинты или нет
+        const ROTATION_ANGLE=(Math.PI/180)*2; // угол поворота колес машины за один момент времени
+
 	// Псевдонимы
 	var Sprite=PIXI.Sprite;
 	var loader=PIXI.loader;
@@ -17,6 +19,7 @@
 	var mapHeight=20*128;
 	var radian10=Math.PI/18; // угол 10 градусов в радианах
 	var radian40=Math.PI/4;  // угол 45 градусов
+	var radToDegree=180/Math.PI; //вспомогательная константа для вычисления градусов по радианам
 	
 	// объкт представляющий один чекпоинт
 var checkObj={
@@ -133,7 +136,7 @@ gameManager={
 			for(var p in mapManager.objects){
 				this.addObj(new Car({name:p,x:baseX*128-70, y:baseY*128-70},spriteManager.carTextures[count]));
 				car=this.objects[p];
-				car.speed=5-count-0.5;
+				car.speed=10-count-0.5;
                 center=mapManager.centerOfCheckPoint(mapManager.checkPoints[0]);
                 car.angle=car.theta(center)+Math.PI/2;        //car.rot(Math.PI/2);
 				++count;
@@ -150,8 +153,9 @@ gameManager={
 			
 			this.app.stage.addChild(this.objectContainer);
 
-			// инициализируем таймер таймер
+			// инициализируем таймер 
 			this.timer=new GameTimer();
+			// инициализируем сообщения
 			this.message['time']=new PIXI.Text(this.timer.toString(),{fontSize:32,fill:0xFFFFF0});
 			this.message['time'].x=0;
 			this.message['time'].y=0;
@@ -165,6 +169,12 @@ gameManager={
 				this.HUD.addChild(this.message[this.objects[p].name]);
 				++count;
 			}
+
+			this.message['angle']=new PIXI.Text("угол",{fontSize:32,fill:0xFF0000});
+			this.message['angle'].x=200;
+			this.message['angle'].y=10;
+			this.HUD.addChild(this.message['angle']);
+
 			this.app.stage.addChild(this.HUD);
 
 			this.mode = this.play;	// установили режим игры
@@ -174,8 +184,7 @@ gameManager={
 	// Функция исполняемая каждый кадр
 	eachFrame:function () {
 
-		//наращиваем игровой таймер
-		this.timer.inc();
+		
 		// Запускаем функцию текущего режима игры каждый кадр
 		this.mode();
 
@@ -183,24 +192,45 @@ gameManager={
 	
 	// Режим игры 
 	play:function () {
+		//наращиваем игровой таймер
+		this.timer.inc();
 		// передвигаем все машинки из массива объектов машинок
 		for (var p in this.objects)
 		{
-			this.demoMove(p);
+			this.botMove(p);
 		}
 
 		this.centeredView();
 		this.showTime();
 
 	},
-	// демка движения машины игрока c заданным именем
-	demoMove:function(name)
+	//  движения ботов 
+	botMove:function(name)
 	{
 		var player=this.objects[name];
 		var id=player.freeCP(); // взяли id не пройденного чекпоинта
 		var center=mapManager.centerOfCheckPoint(mapManager.checkPoints[id]);
                 // вычисляем угол между машиной и чекпоинтом + поправка PI/2
-                player.angle=player.theta(center)+Math.PI/2;
+               // player.angle=(player.theta(center)+Math.PI/2);
+               var _rot_angle=player.theta(center)+Math.PI/2;
+        	var rot_angle=Math.ceil(_rot_angle*radToDegree); // перевели в градусы угол поворота
+        	var now_angle=Math.ceil(player.angle*radToDegree);
+        	if(now_angle>270 && rot_angle<30)
+        	{
+        		now_angle=-now_angle;
+        		//player.angle=_rot_angle;
+        	}
+
+        	 if(rot_angle-now_angle>0)
+         			player.rotRight();
+        	
+         	else if(rot_angle-now_angle<0)
+         			player.rotLeft();
+         		else{
+         			player.angle=_rot_angle;
+         		}
+
+                //player.rotRight(player.theta(center)+Math.PI/2);
                 // Двигаем автомобиль
                 player.move();
                 // проверка проезда чекпоинта машиной
@@ -239,6 +269,11 @@ gameManager={
 		this.mapContainer.y=-this.view.y;
 		this.objectContainer.x=-this.view.x;
 		this.objectContainer.y=-this.view.y;
+		if(SHOW_CHECKPOINTS)
+		{
+			this.graph.x=-this.view.x;
+			this.graph.y=-this.view.y;
+		}
 		//this.app.stage.x=-this.view.x;
 		//this.app.stage.y=-this.view.y;
 	},
@@ -275,6 +310,8 @@ gameManager={
 		{
 			this.message[this.objects[p].name].setText(p+":"+this.objects[p].timer.toString());
 		}
+
+		this.message['angle'].setText("Угол:"+(Math.floor((this.objects['player'].angle)*radToDegree)));
 		
 	}
 };
@@ -531,7 +568,7 @@ function Car(obj, texture){ // инициализация объекта Car о�
 		this.angle=0;
 		this.round=0;  // количество пройденых кругов трассы
 		this.timer=new GameTimer();
-		this.mode=1;
+		this.mode=0;
 
 		this.spr.pivot.x=20;
 		this.spr.pivot.y=35;
@@ -553,7 +590,7 @@ Car.prototype.move=function (){
 	this.x+=this.vx;
 	this.y+=this.vy;
         
-        if(isCollision)
+        if(IS_COLLISION)
         {
             if(mapManager.collision(this)) // если выход за пределы дороги
             {
@@ -568,10 +605,16 @@ Car.prototype.move=function (){
 	this.spr.y=this.y;
 };
 
-Car.prototype.rot=function (angle){	// поворот машины на угол angle
-	this.angle+=angle;
-	if(this.angle>Math.PI*2) this.angle-=Math.PI*2;
-	this.spr.rotation=this.angle;
+Car.prototype.rotRight=function (){	// поворот машины вправо
+	this.angle+=ROTATION_ANGLE;
+
+	//if(this.angle>Math.PI*2) this.angle-=Math.PI*2;
+		//	this.spr.rotation=this.angle;
+};
+Car.prototype.rotLeft = function(){
+	this.angle-=ROTATION_ANGLE; 
+	//if(this.angle>Math.PI*2)
+	//		this.angle-=Math.PI*2;
 };
 
 Car.prototype.dist=function (point){ //вычисление расстояния до точки
@@ -604,7 +647,7 @@ Car.prototype.freeCP = function(){ //возвращает id не пройден
                     
                     id=0;
                     ++this.round; // увеличили кол-во пройденных кругов
-                    this.timer.frame=gameManager.timer.frame;
+                    this.timer.ms=gameManager.timer.ms;
                     this.timer.sec=gameManager.timer.sec;
                     this.timer.min=gameManager.timer.min;
                     //console.log(this.name+" прошел "+this.round+"-й круг!");
@@ -613,28 +656,34 @@ Car.prototype.freeCP = function(){ //возвращает id не пройден
                 return id;
 };
 
-function GameTimer(obj){
-	if(!obj) obj={};
-	this.frame=obj.frame||0;
-	this.sec=obj.sec||0;
-	this.min=obj.min||0;
+function GameTimer(){
+	this.time=Date.now();
+	this.ms=0;
+	this.sec=0;
+	this.min=0;
 };
 GameTimer.prototype.clear = function(){ //очистка таймера
-	this.frame=0;
+	this.time=Date.now();
+	this.ms=0;
 	this.sec=0;
 	this.min=0;
 };
 GameTimer.prototype.inc = function(){ // наращиваем таймер
-	if(++this.frame >= 28)
+	this.ms=Date.now()-this.time;
+	if(this.ms>=1000)
 	{
-		this.frame=0;
-		if(++this.sec >= 60)
+		this.ms=0;
+		this.time=Date.now();
+		if(++this.sec >=60)
 		{
-			this.sec=0;
 			++this.min;
+			this.sec=0;
 		}
 	}
+	
 };
 GameTimer.prototype.toString=function(){
-	return this.min+":"+this.sec+":"+this.frame;
+	var sec=this.sec>=10 ? this.sec: "0"+this.sec;
+	var min=this.min>=10 ? this.min : "0"+this.min;
+	return min+":"+sec+":"+this.ms;
 };
