@@ -1,9 +1,9 @@
 /**
  * Created by SteelMan on 19.06.2017.
  */
-        const IS_COLLISION=false; // вычислять столкновения в движении или нет
-        const SHOW_CHECKPOINTS=true; // показывать чекпоинты или нет
-        const ROTATION_ANGLE=(Math.PI/180)*2; // угол поворота колес машины за один момент времени
+        const IS_COLLISION=true; // вычислять столкновения в движении или нет
+        const SHOW_CHECKPOINTS=false; // показывать чекпоинты или нет
+        const ROTATION_ANGLE=(Math.PI/180)*3; // угол поворота колес машины за один момент времени
 
 	// Псевдонимы
 	var Sprite=PIXI.Sprite;
@@ -209,28 +209,8 @@ gameManager={
 	{
 		var player=this.objects[name];
 		var id=player.freeCP(); // взяли id не пройденного чекпоинта
-		var center=mapManager.centerOfCheckPoint(mapManager.checkPoints[id]);
-                // вычисляем угол между машиной и чекпоинтом + поправка PI/2
-               // player.angle=(player.theta(center)+Math.PI/2);
-               var _rot_angle=player.theta(center)+Math.PI/2;
-        	var rot_angle=Math.ceil(_rot_angle*radToDegree); // перевели в градусы угол поворота
-        	var now_angle=Math.ceil(player.angle*radToDegree);
-        	if(now_angle>270 && rot_angle<30)
-        	{
-        		now_angle=-now_angle;
-        		//player.angle=_rot_angle;
-        	}
-
-        	 if(rot_angle-now_angle>0)
-         			player.rotRight();
-        	
-         	else if(rot_angle-now_angle<0)
-         			player.rotLeft();
-         		else{
-         			player.angle=_rot_angle;
-         		}
-
-                //player.rotRight(player.theta(center)+Math.PI/2);
+				// вращение автомобиля (если требуется)
+        		player.rotation();
                 // Двигаем автомобиль
                 player.move();
                 // проверка проезда чекпоинта машиной
@@ -605,11 +585,38 @@ Car.prototype.move=function (){
 	this.spr.y=this.y;
 };
 
+Car.prototype.rotation = function(){
+	var id=this.freeCP(); // взяли id не пройденного чекпоинта
+			// взяли центр чекпоинта 
+			var center=mapManager.centerOfCheckPoint(mapManager.checkPoints[id]);
+            // вычисляем угол между машиной и чекпоинтом + поправка PI/2
+            // player.angle=(player.theta(center)+Math.PI/2);
+            var _rot_angle=this.theta(center)+Math.PI/2;	//абсолютный угол к которому нужно повернуть
+
+            var alpha_angle=Math.ceil(this.angle*radToDegree);// текущий угол (абсолютный)
+        	var beta_angle=Math.ceil(_rot_angle*radToDegree); // перевели в градусы угол поворота
+        	
+        	var rel_angle=beta_angle-alpha_angle; // относительный угол на который нужно повернуть
+        	if(rel_angle<-180)
+        	{
+        		rel_angle+=360;
+        	}
+        	else if(rel_angle>180)
+        	{
+        		rel_angle-=360;
+        	}
+
+        	if(rel_angle>0)
+        		this.rotRight();
+        	else if(rel_angle<0)
+        		this.rotLeft();
+
+};
 Car.prototype.rotRight=function (){	// поворот машины вправо
 	this.angle+=ROTATION_ANGLE;
 
-	//if(this.angle>Math.PI*2) this.angle-=Math.PI*2;
-		//	this.spr.rotation=this.angle;
+	if(this.angle>Math.PI*2) this.angle-=Math.PI*2;
+			//this.spr.rotation=this.angle;
 };
 Car.prototype.rotLeft = function(){
 	this.angle-=ROTATION_ANGLE; 
